@@ -1,0 +1,649 @@
+{
+  "_note": "Access and licence facts marked verified:true were confirmed against the source's own documentation. verified:false entries are carried from prior knowledge and must be checked before their harvester is written.",
+  "_schema": {
+    "mode": "api | bulk | tiles | none",
+    "auth": "none | key | token | manual",
+    "cors": "yes | no | unknown  (whether a browser can call it directly)",
+    "route": "direct | worker | pmtiles  (how the map reaches it)"
+  },
+  "sources": [
+    {
+      "id": "climate_trace",
+      "name": "Climate TRACE",
+      "replaces_embeds": 6,
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "unknown",
+      "route": "pmtiles",
+      "endpoint": "https://api.climatetrace.org/v7",
+      "bulk": "https://climatetrace.org/data",
+      "licence": "CC BY 4.0",
+      "licence_verified": true,
+      "access_verified": true,
+      "notes": "2,765,671 emission sources. NOTHING IS FILTERED OUT: the earlier 95%-coverage cut and 60,000-feature cap interacted to produce a layer carrying 41.7% of the emissions it claimed to show, so both were removed. Rows without coordinates are dropped and counted; everything else travels with a per-feature `precision` read from Climate TRACE's own asset definitions, because only 23 of the 91 definitions are facilities.",
+      "layer": {
+        "kind": "point",
+        "value": "emissions_tonnes",
+        "unit": "t CO2e/yr"
+      },
+      "discovery": "resolve() in pipeline/sources/climate_trace.py. Path verified live: downloads.climatetrace.org/latest/sector_packages/<gas>/<sector>.zip — the GAS SEGMENT COMES BEFORE THE SECTOR. co2e_100yr/power.zip returns 206; power/co2e_100yr.zip returns 404.",
+      "api_note": "v7 API is public and keyless but pages at max 100 rows via limit/offset, and Climate TRACE ask that beta volume be kept low. A full harvest would be 27,000+ requests, so ingest uses bulk packages and the API is reserved for spot lookups.",
+      "tested": false,
+      "blocked_from_test": "climatetrace.org unreachable from the build environment",
+      "licence_terms": "https://climatetrace.org/terms"
+    },
+    {
+      "id": "epa_tri",
+      "name": "US EPA Toxics Release Inventory",
+      "mode": "api",
+      "auth": "none",
+      "cors": "unknown",
+      "route": "worker",
+      "endpoint": "https://data.epa.gov/efservice",
+      "licence": "US Government work, public domain",
+      "licence_verified": true,
+      "access_verified": true,
+      "notes": "RESTful, JSON by default, no authentication. US only.",
+      "layer": {
+        "kind": "point",
+        "value": "release_lbs",
+        "unit": "lb/yr"
+      }
+    },
+    {
+      "id": "global_forest_watch",
+      "name": "Global Forest Watch Data API",
+      "mode": "api",
+      "auth": "key",
+      "cors": "no",
+      "route": "worker",
+      "endpoint": "https://data-api.globalforestwatch.org",
+      "licence": "unchecked",
+      "licence_verified": false,
+      "access_verified": true,
+      "notes": "API key required, so it cannot be called from page source. Key lives in the Worker.",
+      "layer": {
+        "kind": "point",
+        "value": "alert_count",
+        "unit": "alerts"
+      },
+      "worker_shaper": "shape() in worker/index.js — field names are INFERRED; the Worker returns a loud 502 rather than an empty layer if they are wrong",
+      "tested": false,
+      "blocked_from_test": "needs an API key and the host is unreachable from the build environment"
+    },
+    {
+      "id": "global_fishing_watch",
+      "name": "Global Fishing Watch",
+      "mode": "api",
+      "auth": "token",
+      "cors": "no",
+      "route": "worker",
+      "endpoint": "https://gateway.api.globalfishingwatch.org/v3",
+      "licence": "non-commercial use only",
+      "licence_verified": true,
+      "access_verified": true,
+      "notes": "4Wings, Vessels, Events, Datasets APIs. Token required. Non-commercial only — fine while the site stays non-commercial.",
+      "layer": {
+        "kind": "point",
+        "value": "fishing_hours",
+        "unit": "hours"
+      },
+      "worker_shaper": "shape() in worker/index.js — field names are INFERRED; the Worker returns a loud 502 rather than an empty layer if they are wrong",
+      "tested": false,
+      "blocked_from_test": "needs an API key and the host is unreachable from the build environment"
+    },
+    {
+      "id": "land_matrix",
+      "name": "Land Matrix",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "unknown",
+      "route": "country",
+      "endpoint": "https://landmatrix.org/api",
+      "licence": "DISPUTED: mirror README says CC BY-SA 4.0, its datapackage.json says CC BY-NC 4.0",
+      "licence_verified": false,
+      "access_verified": true,
+      "notes": "2,370 deals, 59.8M hectares across 97 countries. NO COORDINATES in the mirror despite its README describing location data, so this renders as a country choropleth, not points. Scope is deals >=200 ha in low/middle-income countries since 2000 — absence means not captured, not nothing happening.",
+      "isolate": true,
+      "layer": {
+        "kind": "country",
+        "value": "hectares",
+        "unit": "hectares under land deals"
+      },
+      "discovery": "resolve() in pipeline/sources/land_matrix.py — GitHub mirror, default branch resolved each run",
+      "tested": true
+    },
+    {
+      "id": "global_energy_monitor",
+      "name": "Global Energy Monitor trackers",
+      "mode": "bulk",
+      "auth": "manual",
+      "cors": "n/a",
+      "route": "pmtiles",
+      "endpoint": null,
+      "licence": "CC BY 4.0",
+      "licence_verified": true,
+      "access_verified": true,
+      "notes": "Download sits behind a request form, so there is no stable URL to poll. A person must fetch each release and drop it in data/manual/. Everything downstream is automated. NOTE: the Global Coal Plant Tracker is now harvested automatically via gem_coal (GreenInfo-Network's repo). This manual entry covers only the trackers not mirrored that way.",
+      "manual_drop": "data/manual/gem/",
+      "layer": {
+        "kind": "point",
+        "value": "capacity",
+        "unit": "varies by tracker"
+      }
+    },
+    {
+      "id": "trase",
+      "name": "Trase",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "n/a",
+      "route": "pmtiles",
+      "endpoint": "https://trase.earth/open-data",
+      "licence": "CC BY 4.0 for charts, graphics, maps and other representations of the data. Commercial use requires contacting info@trase.earth; this atlas is non-commercial civic education, so the CC BY term applies.",
+      "licence_verified": true,
+      "access_verified": true,
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "facility"
+      },
+      "licence_evidence": "Stated on each dataset page, e.g. trase.earth/open-data/datasets/supply-chains-brazil-soy.",
+      "notes": "190 datasets. THE SUPPLY-CHAIN DATASETS ARE NOT MAPPABLE AS POINTS: supply-chains-<country>-<commodity> is trade flow between subnational regions, companies and destination countries — a graph, not a set of places, and geocoding it would invent locations. The mappable ones are the FACILITIES datasets Trase began publishing in 2025: slaughterhouses and meat processing in Brazil, palm oil mills in Indonesia carrying Universal Mill List ids, cocoa cooperatives in Cote d'Ivoire, and about 9,300 Brazilian soy silos and processing sites, many with stated ownership. Those are what this layer should carry. Note the soy facility set was identified by an AI vision workflow that Trase state is over 90% accurate — which means it is not a register and a share of it is wrong; carry that in the layer note. spatial-metrics-* datasets are municipality-level deforestation and emissions and would be a country or admin layer, not points.",
+      "discovery": "trase.earth/open-data is server-rendered and paginated (13 pages), with filters ?country=&commodity=&year=. Dataset slugs are readable from the listing, so discover.page_link() can find the current facilities datasets rather than pinning one. The per-dataset download URL has NOT been read yet — do that before writing the harvester."
+    },
+    {
+      "id": "carbon_bombs",
+      "name": "Carbon Bombs",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": true,
+      "licence_verified": true,
+      "cors": "n/a",
+      "endpoint": "https://github.com/dataforgoodfr/CarbonBombs",
+      "licence": "repo declares NO licence; underlying GEM trackers are CC BY 4.0, project data from Kuhne et al. (Energy Policy)",
+      "tested": true,
+      "notes": "425 projects, 1,182 Gt CO2 combined. Raw CSV serves an ETag, so release detection works. Coordinate precision varies: 330 asset-level from GEM, 92 country centroids, 3 manual — carried as x_precision and styled separately. company_data.csv is NOT harvested: its HQ coordinates were geocoded from ChatGPT-generated addresses.",
+      "caution": "No declared repo licence. Tracked in _publish_blockers; build proceeds, decision deferred to pre-publish.",
+      "layer": {
+        "kind": "point",
+        "value": "Potential_GtCO2",
+        "unit": "Gt CO2 lifetime"
+      },
+      "discovery": "resolve() in pipeline/sources/carbon_bombs.py — GitHub API, default branch resolved each run",
+      "tiles_verified": "Built with tippecanoe 2.68.0: 1.0 MB, zooms 0-12, 2,070 tiles. z0 rolls up to 425 features / 1,182.3 Gt, matching the source exactly."
+    },
+    {
+      "id": "forest_500",
+      "name": "Forest 500",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "bocc",
+      "name": "Banking on Climate Chaos",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": true,
+      "licence_verified": false,
+      "notes": "Bank-to-company financing totals, not geocoded upstream. Needs sourced bank HQ coordinates before it can be a layer; the Carbon Bombs company file is not an acceptable source for those.",
+      "discovery": "resolve() in pipeline/sources/bocc.py — scrapes the download page and takes the highest year, so annual releases are picked up automatically"
+    },
+    {
+      "id": "allen_coral",
+      "name": "Allen Coral Atlas",
+      "mode": "api",
+      "auth": "none",
+      "route": "worker",
+      "access_verified": true,
+      "licence_verified": true,
+      "check_runtime_endpoint": true,
+      "cors": "unknown",
+      "endpoint": "https://allencoralatlas.org/geoserver/ows",
+      "licence": "CC BY 4.0",
+      "licence_evidence": "ows:AccessConstraints in the WFS 2.0.0 GetCapabilities reads 'CC BY 4.0'; ows:Fees reads 'NONE'.",
+      "layers": [
+        "coral-atlas:benthic_data_verbose",
+        "coral-atlas:geomorphic_data_verbose"
+      ],
+      "notes": "Layer names read from the WFS GetCapabilities, which is where they are legible — the WMS one emits ~4,000 <CRS> entries and truncates before the FeatureTypeList. Only these two feature types exist. GetFeature offers application/json, DefaultCRS is EPSG:4326, CountDefault is 1,000,000. DECLARED EXTENT IS -32 to +32 DEGREES, not the 30N-30S recorded earlier. Benthic maps to 10 m depth, geomorphic to 15 m.",
+      "layer": {
+        "kind": "polygon",
+        "value": null,
+        "unit": "habitat class"
+      }
+    },
+    {
+      "id": "global_safety_net",
+      "name": "Global Safety Net",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false,
+      "check_runtime_endpoint": true
+    },
+    {
+      "id": "counterglow",
+      "name": "Counterglow",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false,
+      "check_runtime_endpoint": true
+    },
+    {
+      "id": "nusantara_atlas",
+      "name": "Nusantara Atlas",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false,
+      "check_runtime_endpoint": true
+    },
+    {
+      "id": "palmwatch",
+      "name": "PalmWatch",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false,
+      "check_runtime_endpoint": true,
+      "cors": "unknown",
+      "endpoint": "https://palmwatch.inclusivedevelopment.net/",
+      "licence": "described by its publishers as a free and open-source data project; no SPDX identifier or terms page read yet",
+      "notes": "Inclusive Development International with the University of Chicago Data Science Institute. Over 2,000 geolocated crushing mills across 32 countries, scraped from the supply-chain disclosures of 13-15 consumer brands — so each mill carries which brands source from it, who owns and operates it, and its RSPO certification status. That is the rare thing here: it names buyers, not just sites. Each mill also has a CATCHMENT POLYGON, drawn at roughly 50 km radius adjusted by road network analysis, with 20 years of University of Maryland tree-cover loss overlaid inside it, and past and future deforestation scores derived from that. THE CATCHMENT IS A MODELLED SOURCING AREA, NOT A PROPERTY BOUNDARY, and the deforestation inside it is not attributed to the mill by measurement — if the catchments are drawn, that has to be stated, or the map asserts that a named company cleared a specific forest.",
+      "discovery": "Not yet resolved. The site is a client-rendered application, so the download path has to come from its runtime requests or from the project's source — it is described as open-source, so look for the repository first. Do not guess a path.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "mill"
+      }
+    },
+    {
+      "id": "glw",
+      "name": "Gridded Livestock of the World",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "hydrofate",
+      "name": "HydroFATE",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "gwwm",
+      "name": "Global Wastewater Model",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "soilgrids",
+      "name": "SoilGrids",
+      "mode": "api",
+      "auth": "unknown",
+      "route": "worker",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "umap_wreckers",
+      "name": "Wreckers of the Earth (uMap)",
+      "mode": "api",
+      "auth": "none",
+      "cors": "yes",
+      "route": "direct",
+      "access_verified": false,
+      "licence_verified": false,
+      "notes": "uMap serves each datalayer as GeoJSON."
+    },
+    {
+      "id": "arcgis_layers",
+      "name": "ArcGIS FeatureServers behind the two arcg.is links",
+      "mode": "api",
+      "auth": "none",
+      "cors": "yes",
+      "route": "direct",
+      "access_verified": false,
+      "licence_verified": false
+    },
+    {
+      "id": "google_mymaps",
+      "name": "Google My Maps layer",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "access_verified": false,
+      "licence_verified": false,
+      "notes": "KML export."
+    },
+    {
+      "id": "glad_hansen",
+      "name": "GLAD / Hansen forest change",
+      "mode": "tiles",
+      "auth": "none",
+      "route": "direct",
+      "access_verified": true,
+      "licence_verified": false,
+      "notes": "Raster only. Overlays as a tile layer; has no features to click."
+    },
+    {
+      "id": "_no_data",
+      "name": "Render-only embeds",
+      "mode": "none",
+      "members": [
+        "Fortune Global 500",
+        "They Rule",
+        "ConstructConnect",
+        "Power BI report",
+        "Scribd",
+        "Imgflip x2",
+        "portfolio.earth",
+        "Deforestation Free Funds"
+      ],
+      "notes": "Nothing underneath to merge. These stay as embeds in the atlas."
+    },
+    {
+      "id": "power_plants",
+      "name": "Power plants (WRI Global Power Plant Database)",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "n/a",
+      "route": "pmtiles",
+      "endpoint": "https://github.com/wri/global-power-plant-database",
+      "discovery": "resolve() in pipeline/sources/power_plants.py — GitHub API, master branch",
+      "licence": "CC BY 4.0 (database); MIT for the repo's Python source",
+      "licence_verified": true,
+      "access_verified": true,
+      "tested": true,
+      "notes": "All 34,936 plants, every fuel, 5,706,975 MW total. Nothing filtered — `fuel` travels per feature so filtering belongs to the reader at view time. Harvests the bleeding-edge output_database/ copy, not the tagged datasets.wri.org release.",
+      "caution": "capacity_mw is potential output, not emissions. Coordinates come from many upstreams of differing quality; geolocation_source is carried per feature.",
+      "layer": {
+        "kind": "point",
+        "value": "capacity_mw",
+        "unit": "MW capacity"
+      }
+    },
+    {
+      "id": "owid_co2",
+      "name": "National CO2 emissions (Our World in Data)",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "country",
+      "endpoint": "https://github.com/owid/co2-data",
+      "discovery": "resolve() in pipeline/sources/owid_co2.py — GitHub API, master branch",
+      "licence": "CC BY 4.0 for OWID's own work; third-party series they redistribute keep their original terms",
+      "licence_verified": true,
+      "access_verified": true,
+      "tested": true,
+      "notes": "50,411 country-years, 1750-2024. Takes the most recent year with at least 150 reporting countries rather than a hardcoded year, so it never shows a half-empty world. Value is production (territorial) CO2; consumption CO2 travels alongside it since the two tell different stories about wealthy importers. OWID aggregate rows (OWID_WRL, regions, income groups) are excluded — they are not countries.",
+      "layer": {
+        "kind": "country",
+        "value": "co2",
+        "unit": "million tonnes CO2"
+      }
+    },
+    {
+      "id": "gem_coal",
+      "name": "Coal plant units (GEM Global Coal Plant Tracker)",
+      "mode": "bulk",
+      "auth": "none",
+      "route": "pmtiles",
+      "endpoint": "https://github.com/GreenInfo-Network/coal-tracker-client",
+      "discovery": "resolve() in pipeline/sources/gem_coal.py — raw URL with ETag; the contents API is skipped because it is rate limited to 60/hour unauthenticated",
+      "licence": "CC BY 4.0 (Global Energy Monitor)",
+      "licence_verified": true,
+      "access_verified": true,
+      "tested": true,
+      "notes": "13,784 generating units, 5,036,189 MW. Reached via GreenInfo-Network's tracker client repo, which commits GEM's data — so this bypasses GEM's request form. Rows are UNITS, not stations: one plant appears several times at nearly the same coordinates. All statuses kept (6,550 operating, 2,990 cancelled, 2,831 retired, and so on); filtering is offered in the map panel.",
+      "layer": {
+        "kind": "point",
+        "value": "capacity",
+        "unit": "MW capacity"
+      }
+    },
+    {
+      "id": "cerulean_slicks",
+      "name": "Cerulean oil slicks (SkyTruth)",
+      "mode": "api",
+      "auth": "none",
+      "cors": "unknown",
+      "route": "worker",
+      "endpoint": "https://api.cerulean.skytruth.org/collections/public.slick_plus/items",
+      "licence": "unchecked — SkyTruth Terms of Service not yet read",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Endpoint and parameters transcribed from notebooks/Cerulean API Guide.ipynb in SkyTruth/cerulean-cloud, which is the document skytruth.org/cerulean-api links to. The linked copy is a Colab behind a Google sign-in; the repo copy is the same notebook and is readable.",
+      "query": "?bbox=minx,miny,maxx,maxy&datetime=<start>/<end>&limit=<=9999&offset=&sortby=&filter=<CQL-2>&f=geojson|csv",
+      "notes": "Sentinel-1 SAR detections, January 2023 to present. GEOMETRY IS MultiPolygon, so this cannot use the existing worker route's circle layer — app.js needs a fill/line branch first. SkyTruth's own caveats, for the layer note: it is not possible to identify oil from SAR alone, so every feature is a POTENTIAL slick; coverage is EEZs rather than high seas; and max_source_collated_score is only available about 72 hours after an event, so near-real-time queries use slick_confidence instead. Default limit is 10 if unspecified. NOTE: the guide's own bbox examples read west,north,east,south (10.9,42.3,19.7,36.1) — send standard OGC minx,miny,maxx,maxy and verify the returned extent on the first live call.",
+      "layer": {
+        "kind": "polygon",
+        "value": null,
+        "unit": "potential slick"
+      }
+    },
+    {
+      "id": "cerulean_sources",
+      "name": "Cerulean slick sources (SkyTruth)",
+      "mode": "api",
+      "auth": "none",
+      "cors": "unknown",
+      "route": "worker",
+      "endpoint": "https://api.cerulean.skytruth.org/collections/public.source_plus/items",
+      "licence": "unchecked — SkyTruth Terms of Service not yet read",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Endpoint and parameters transcribed from notebooks/Cerulean API Guide.ipynb in SkyTruth/cerulean-cloud, which is the document skytruth.org/cerulean-api links to. The linked copy is a Colab behind a Google sign-in; the repo copy is the same notebook and is readable.",
+      "query": "?bbox=minx,miny,maxx,maxy&datetime=<start>/<end>&limit=<=9999&offset=&sortby=&filter=<CQL-2>&f=geojson|csv",
+      "notes": "The attribution side: vessels and offshore infrastructure Cerulean associates with a slick. source_type is VESSEL, INFRA, DARK or NATURAL; source_rank 1-3 orders the candidates; source_collated_score runs -5 to +5 and SkyTruth recommend treating >0 as credible. THIS LAYER NAMES PARTIES, which is rare among these sources and raises the cost of getting it wrong: a score is an estimated likelihood, not a finding, and the popup must say so. AIS identity lags up to 72 hours.",
+      "layer": {
+        "kind": "polygon",
+        "value": null,
+        "unit": "candidate source"
+      }
+    },
+    {
+      "id": "gmo_releases",
+      "name": "Genetic-engineering registers",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/GMO-map/main/projects.json",
+      "licence": "mixed — US APHIS BRS is a US Government work (public domain); CFIA, OGTR and CBD Biosafety Clearing-House records each carry their own terms; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/GMO-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 43,741 records observed. 41,948 of them (95.9%) carry precise:false — APHIS publishes release states and never field coordinates, so those sit at state centroids and must draw hollow. Upstream has already excluded 6,085 never-authorised records (10.1% of 60,242 seen) and says so in its own `dropped` block. Five registers present: aphis 22,111, industry 16,337, bch 3,025, clinical 2,231, ogtr 37.",
+      "discovery": "resolve() reads projects.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "authorisation"
+      }
+    },
+    {
+      "id": "local_projects",
+      "name": "Development projects",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/local-map/main/projects/index.json",
+      "licence": "mixed — 68 registers including OpenStreetMap (ODbL 1.0, SHARE-ALIKE), Land Matrix (itself disputed, see the land_matrix blocker), World Bank, IATI, and national EIA/planning registers; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/local-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 401,100 projects declared across 826 five-degree tiles, with 1,491 distinct types and 68 source registers. Only index.json resolves through the GitHub API; the tiles are read from raw, because 826 API calls against an unauthenticated limit of 60/hour would stop partway and leave the map silently missing continents. Rows carry `t` and `s` as INDICES into index.json's arrays, not strings. `acres` is the only measured magnitude and is present on part of the rows. No panel facet: 1,491 values is not a row of chips.",
+      "discovery": "resolve() reads projects/index.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "acres"
+      },
+      "isolate": true
+    },
+    {
+      "id": "slavery_sites",
+      "name": "Brick kilns and artisanal mining",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/anti-slavery-map/main/points.json",
+      "licence": "mixed — IPIS (2,922 field-visited sites, terms unverified) and a kiln dataset whose provenance is recorded only as 'kilns'; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/anti-slavery-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 7,552 sites observed: 4,630 brick kilns, 1,582 mining sites with child labour observed, 1,131 mining sites, 209 with forced labour observed. The file's own note is load-bearing and must reach the layer: sector infrastructure at coordinate precision, NOT confirmed exploitation.",
+      "discovery": "resolve() reads points.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "site"
+      }
+    },
+    {
+      "id": "slavery_ports",
+      "name": "Ports with high-risk vessel calls",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/anti-slavery-map/main/infra.json",
+      "licence": "mixed — port positions from the NGA World Port Index (US Government work, public domain); risk scoring from McDonald et al., PNAS 2021; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/anti-slavery-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 3,424 ports observed, all with real coordinates, so these draw solid. The score is a property of the vessel calls, not of the port authority, and behaviour consistent with forced labour is not a finding of it.",
+      "discovery": "resolve() reads infra.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "port"
+      }
+    },
+    {
+      "id": "slavery_fishing",
+      "name": "Modelled at-risk fishing effort",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/anti-slavery-map/main/vessels.json",
+      "licence": "mixed — emlab-ucsb/slavery-in-fisheries; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/anti-slavery-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 2,316 cells of 2.5 degrees observed. NOT VESSELS: the authors anonymised every hull before release and the method was contested in the same journal. precision is fixed to 'grid' in the harvester rather than read from `precise`, because what makes these imprecise is that they are cells — and the popup needs the cell size to say so.",
+      "discovery": "resolve() reads vessels.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "model grid cell"
+      }
+    },
+    {
+      "id": "slavery_cases",
+      "name": "Identified trafficking cases",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "country",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/anti-slavery-map/main/cases.json",
+      "licence": "Counter-Trafficking Data Collaborative (IOM, Polaris, A21, RecollectiV, Portuguese observatory); terms unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/anti-slavery-map. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 71 countries, 209,375 identified cases observed. THE ROWS OVERLAP: each country carries a grand total typed 'Identified cases (CTDC)' AND a type-by-period breakdown that partitions it exactly (USA: 116,418 either way). Summing both double-counted every such country and produced a global 418,750 that no source states. Detection, not prevalence — a country with no cases may have no one counting.",
+      "discovery": "resolve() reads cases.json through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "country",
+        "value": null,
+        "unit": "identified cases"
+      }
+    },
+    {
+      "id": "remains_records",
+      "name": "Unearthings and burial decisions",
+      "mode": "bulk",
+      "auth": "none",
+      "cors": "yes",
+      "route": "pmtiles",
+      "bulk": "https://raw.githubusercontent.com/WelcomeToYourGalaxy/remains/main/remains.json.gz",
+      "licence": "mixed — US Federal Register (public domain), NSW AHIP boundaries (CC-BY, NSW DCCEEW), OpenStreetMap (ODbL 1.0, SHARE-ALIKE), CEQA and UK planning; unverified",
+      "licence_verified": false,
+      "access_verified": true,
+      "access_evidence": "Harvester run live against raw.githubusercontent; row counts and field names in the notes are observed, not inferred.",
+      "notes": "Own repo, WelcomeToYourGalaxy/remains. It declares NO LICENCE FILE, which defaults to all rights reserved — not a problem for self-use, but the upstream terms below travel with the data and are the ones that bind republication. 4,020 records observed. THE SOURCE BLURS BURIAL LOCATIONS BY DESIGN and this harvester must never undo it: `geo` takes the values exact (455), coarsened (2,580), area (938), admin (47), and `coarsened` is the ~5 km blur applied to anything that is itself a burial location. An earlier mapping did not know that word and let all 2,580 fall through to a solid located dot. Unknown geo values now fail safe to 'unknown'. Do not add geocoding to this source. Direction is separate from magnitude: 3,485 harm, 458 redress, 77 watch — a large repatriation is a large event, not a bad one.",
+      "discovery": "resolve() reads remains.json.gz through discover.github_file(), so the blob SHA is the change signal.",
+      "layer": {
+        "kind": "point",
+        "value": null,
+        "unit": "record"
+      }
+    }
+  ],
+  "_publish_blockers": [
+    {
+      "source": "carbon_bombs",
+      "issue": "The dataforgoodfr/CarbonBombs repo declares no licence, which defaults to all rights reserved. The underlying GEM trackers are CC BY 4.0 and the project list is from Kuhne et al., Energy Policy.",
+      "decision": "Proceeding with the build. Raise again before the map goes public.",
+      "resolve_by": "attribute GEM and Kuhne et al., or ask hellodataforgood@gmail.com",
+      "blocks": "publish"
+    },
+    {
+      "source": "land_matrix",
+      "issue": "The datasets/land-matrix mirror states two different licences for the same data: README.md says CC BY-SA 4.0, datapackage.json says CC BY-NC 4.0. Share-alike and non-commercial are different obligations and only one can be correct.",
+      "decision": "Building against the stricter reading (isolated archive, non-commercial site). Resolve against Land Matrix's own terms before publishing.",
+      "resolve_by": "check landmatrix.org terms, or use their API directly rather than the mirror",
+      "blocks": "publish"
+    },
+    {
+      "source": "own repos (gmo_releases, local_projects, slavery_*, remains_records)",
+      "issue": "None of the five WelcomeToYourGalaxy repos carries a LICENSE file, so each defaults to all rights reserved. That is moot for using your own work, but the upstream licences travel with the data and are not all permissive.",
+      "decision": "Building. Add a LICENSE to each repo, and record per-source terms, before any of this is republished.",
+      "resolve_by": "add LICENSE files; confirm the IPIS and kiln terms, which are the two with no stated licence anywhere",
+      "blocks": "publish"
+    },
+    {
+      "source": "local_projects, remains_records",
+      "issue": "Both carry OpenStreetMap-derived rows, which are ODbL 1.0 — share-alike. Mixing share-alike data into a combined archive propagates the obligation to everything it is combined with.",
+      "decision": "local_projects is marked isolate:true so it builds as a standalone archive, the same treatment land_matrix gets. remains_records is NOT isolated yet: its OSM share is not separated in the source file, so whether the whole layer inherits ODbL is unresolved.",
+      "resolve_by": "split the OSM-derived remains rows by their `register` field, or isolate that layer too",
+      "blocks": "publish"
+    },
+    {
+      "source": "cerulean_sources",
+      "issue": "This layer names specific vessels and platforms as candidate sources of pollution. source_collated_score is an estimated likelihood on a -5 to +5 scale, not a finding, and SkyTruth state that slicks cannot be definitively identified as oil from SAR alone.",
+      "decision": "Not built yet. When it is, the score, the rank and the potential wording all have to reach the popup, and the layer name must not read as an accusation.",
+      "resolve_by": "read SkyTruth's Terms of Service and mirror their own language",
+      "blocks": "publish"
+    },
+    {
+      "source": "palmwatch",
+      "issue": "Mill catchments are modelled sourcing areas at ~50 km adjusted by road network, and the deforestation figure is tree-cover loss falling inside that modelled area. Drawing the catchment next to an owner's name reads as an assertion that the named company cleared that forest, which is not what the method establishes.",
+      "decision": "Not built yet. If catchments are drawn, the modelled basis has to be in the layer note and the popup, not a footnote.",
+      "resolve_by": "read PalmWatch's own methodology page and mirror its wording",
+      "blocks": "publish"
+    }
+  ]
+}
